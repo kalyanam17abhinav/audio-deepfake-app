@@ -1,65 +1,45 @@
 import streamlit as st
-import librosa
 import numpy as np
-import tensorflow as tf
+import librosa
 from tensorflow.keras.models import load_model
-import matplotlib.pyplot as plt
-import librosa.display
 
-# Function to load and preprocess the audio
-def preprocess_audio(audio_path, sample_rate=16000, duration=2, n_mels=128):
+# Load the trained model
+model = load_model("./audio_classifier.h5")
+
+# Function to preprocess the .flac audio file
+def preprocess_audio(file_path):
     # Load the audio file
-    audio, sr = librosa.load(audio_path, sr=sample_rate, duration=duration)
+    audio, sr = librosa.load(file_path, sr=22050)
+    # Extract MFCC features
+    mfcc = librosa.feature.mfcc(audio, sr=sr, n_mfcc=13)
+    # Aggregate features (mean of each MFCC coefficient across frames)
+    mfcc_scaled = np.mean(mfcc.T, axis=0)
+    return mfcc_scaled
 
-    # Generate Mel spectrogram
-    mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=n_mels)
-
-    # Convert to log scale (dB)
-    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram)
-
-    # Pad or truncate to fit model input size
-    max_time_steps = 128  # Adjust based on model's requirements
-    if log_mel_spectrogram.shape[1] < max_time_steps:
-        pad_width = max_time_steps - log_mel_spectrogram.shape[1]
-        log_mel_spectrogram = np.pad(log_mel_spectrogram, ((0, 0), (0, pad_width)), mode='constant')
-    else:
-        log_mel_spectrogram = log_mel_spectrogram[:, :max_time_steps]
-
-    return log_mel_spectrogram
-
-# Load the model
-model = load_model("./audio_classifier.h5")  # Path to the saved model file
-
-# Streamlit App UI
+# Streamlit UI
 st.title("Audio Deepfake Detection")
+st.write("Upload a `.flac` file for deepfake analysis.")
 
-# File uploader for the audio file
-uploaded_file = st.file_uploader("Choose an audio file", type=["wav", "mp3",'flac'])
+# File uploader
+uploaded_file = st.file_uploader("Upload your `.flac` audio file", type=["flac"])
 
 if uploaded_file is not None:
-    # Save the uploaded file temporarily
-    with open("temp_audio_file.wav", "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    # Preprocess the uploaded audio file
-    audio_features = preprocess_audio("temp_audio_file.wav")
-
-    # Reshape the data to fit the model input
-    audio_features = np.expand_dims(audio_features, axis=0)  # Add batch dimension
-    audio_features = np.expand_dims(audio_features, axis=-1)  # Add channel dimension if required
-
-    # Make predictions
-    prediction = model.predict(audio_features)
-    predicted_class = np.argmax(prediction, axis=-1)
-
-    # Display results
-    st.write(f"Predicted class: {predicted_class[0]}")
+    st.audio(uploaded_file, format="audio/flac")
     
-    # Visualize the Mel spectrogram of the uploaded audio file
-    st.write("Mel Spectrogram of the Audio:")
-    mel_spectrogram = librosa.feature.melspectrogram(y=audio_features[0, ..., 0], sr=16000)
-    plt.figure(figsize=(10, 4))
-    librosa.display.specshow(librosa.power_to_db(mel_spectrogram), x_axis='time', y_axis='mel')
-    plt.colorbar(format='%+2.0f dB')
-    plt.title('Mel Spectrogram')
-    st.pyplot(plt)
+    # Save the uploaded file temporarily
+    with open("temp.flac", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    
+    # Preprocess the audio file
+    audio_features = preprocess_audio("temp.flac")
+    
+    # Reshape for model input (add batch dimension)
+    audio_features = np.expand_dims(audio_features, axis=0)
+    
+    # Predict using the model
+    prediction = model.predict(audio_features)
+    result = "Deepfake Detected" if prediction[0][0] > 0.5 else "Audio is Real"
+    
+    # Display the result
+    st.subheader("Prediction:")
+    st.write(result)
