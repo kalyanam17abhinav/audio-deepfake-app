@@ -34,7 +34,7 @@ model = load_model("./audio_classifier.h5")  # Path to the saved model file
 st.title("Audio Deepfake Detection")
 
 # File uploader for the audio file
-uploaded_file = st.file_uploader("Choose an audio file", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Choose an audio file", type=["wav", "mp3",'flac'])
 
 if uploaded_file is not None:
     # Save the uploaded file temporarily
