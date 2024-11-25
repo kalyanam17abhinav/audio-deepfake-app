@@ -11,7 +11,7 @@ def preprocess_audio(file_path):
     # Load the audio file
     audio, sr = librosa.load(file_path, sr=22050)
     # Extract MFCC features
-    mfcc = librosa.feature.mfcc(audio, sr=sr, n_mfcc=13)
+    mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
     # Aggregate features (mean of each MFCC coefficient across frames)
     mfcc_scaled = np.mean(mfcc.T, axis=0)
     return mfcc_scaled
