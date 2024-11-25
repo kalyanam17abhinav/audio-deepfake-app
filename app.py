@@ -28,7 +28,7 @@ def preprocess_audio(audio_path, sample_rate=16000, duration=2, n_mels=128):
     return log_mel_spectrogram
 
 # Load the model
-model = load_model("audio_classifier.h5")  # Path to the saved model file
+model = load_model("./audio_classifier.h5")  # Path to the saved model file
 
 # Streamlit App UI
 st.title("Audio Deepfake Detection")
